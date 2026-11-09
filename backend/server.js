@@ -81,18 +81,83 @@ app.get(['/api/debug', '/debug'], async (_req, res) => {
     info.steps.treeSitter = { ok: false, error: err.message };
   }
 
-  // Test 3: Gemini status
+  // Test 3: Gemini status & available models
   try {
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'text-embedding-004' });
-    const res = await model.embedContent('function test() { return 1; }');
-    info.steps.geminiEmbedding = { ok: true, dims: res.embedding.values.length };
+    // Try embedding models
+    const candidateModels = ['text-embedding-004', 'embedding-001', 'gemini-embedding-exp-03-07'];
+    let works = null;
+    for (const m of candidateModels) {
+      try {
+        const model = genAI.getGenerativeModel({ model: m });
+        const res = await model.embedContent('hello');
+        works = { model: m, dims: res.embedding.values.length };
+        break;
+      } catch (e) {
+        // try next
+      }
+    }
+    info.steps.geminiEmbedding = works || { ok: false };
   } catch (err) {
     info.steps.geminiEmbedding = { ok: false, error: err.message };
   }
 
   res.json(info);
+});
+
+// ─── Test ingest step by step ────────────────────────────────────────────────
+app.get(['/api/debug/test-step', '/debug/test-step'], async (req, res) => {
+  const step = parseInt(req.query.step || '1', 10);
+  const repoUrl = 'https://github.com/Shivansh-star/code-sense';
+  const testDir = path.resolve(__dirname, 'tmp', 'test_repo');
+
+  const result = { step, memStart: Math.round(process.memoryUsage().rss / 1024 / 1024) };
+
+  try {
+    if (step >= 1) {
+      const { default: simpleGit } = await import('simple-git');
+      if (fs.existsSync(testDir)) fs.rmSync(testDir, { recursive: true, force: true });
+      fs.mkdirSync(testDir, { recursive: true });
+      await simpleGit().clone(repoUrl, testDir, ['--depth', '1']);
+      result.step1_clone = 'ok';
+    }
+
+    if (step >= 2) {
+      const { walkDirectory } = await import('./utils/fileWalker.js');
+      const files = walkDirectory(testDir);
+      result.step2_files = files.length;
+    }
+
+    if (step >= 3) {
+      const { walkDirectory } = await import('./utils/fileWalker.js');
+      const { parseFile } = await import('./services/parser.service.js');
+      const files = walkDirectory(testDir);
+      let chunks = [];
+      for (const f of files) {
+        chunks.push(...parseFile(f, testDir));
+      }
+      result.step3_chunks = chunks.length;
+    }
+
+    if (step >= 4) {
+      const { walkDirectory } = await import('./utils/fileWalker.js');
+      const { parseFile } = await import('./services/parser.service.js');
+      const { embed } = await import('./services/embedding.service.js');
+      const files = walkDirectory(testDir);
+      let chunks = [];
+      for (const f of files) chunks.push(...parseFile(f, testDir));
+      const texts = chunks.slice(0, 10).map(c => c.code); // test first 10
+      result.memBeforeEmbed = Math.round(process.memoryUsage().rss / 1024 / 1024);
+      const embs = await embed(texts);
+      result.step4_embeddings = embs.length;
+      result.memAfterEmbed = Math.round(process.memoryUsage().rss / 1024 / 1024);
+    }
+
+    res.json({ ok: true, result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message, stack: err.stack });
+  }
 });
 
 // ─── Health check ─────────────────────────────────────────────────────────────
