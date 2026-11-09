@@ -86,19 +86,27 @@ app.get(['/api/debug', '/debug'], async (_req, res) => {
     const { GoogleGenerativeAI } = await import('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     // Try embedding models
-    const candidateModels = ['text-embedding-004', 'embedding-001', 'gemini-embedding-exp-03-07'];
+    const candidateModels = [
+      'gemini-embedding-001',
+      'models/gemini-embedding-001',
+      'gemini-embedding-2',
+      'models/gemini-embedding-2',
+      'gemini-embedding-2-preview',
+      'text-embedding-005',
+    ];
     let works = null;
+    let errors = [];
     for (const m of candidateModels) {
       try {
         const model = genAI.getGenerativeModel({ model: m });
-        const res = await model.embedContent('hello');
+        const res = await model.embedContent('hello world');
         works = { model: m, dims: res.embedding.values.length };
         break;
       } catch (e) {
-        // try next
+        errors.push(`${m}: ${e.message}`);
       }
     }
-    info.steps.geminiEmbedding = works || { ok: false };
+    info.steps.geminiEmbedding = works || { ok: false, errors };
   } catch (err) {
     info.steps.geminiEmbedding = { ok: false, error: err.message };
   }
