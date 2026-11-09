@@ -6,9 +6,8 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '/api',
-  timeout: 300_000, // 5 min – ingestion can take time for large repos
-  headers: { 'Content-Type': 'application/json' },
+  baseURL: 'https://codesense-backend-5kk2.onrender.com', // Render wala URL
+  timeout: 300_000,
 });
 
 /**
