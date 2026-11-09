@@ -49,6 +49,52 @@ app.use('/api/chat', chatRouter);
 app.use('/ingest', ingestRouter);
 app.use('/chat', chatRouter);
 
+// ─── Debug endpoint ───────────────────────────────────────────────────────────
+app.get(['/api/debug', '/debug'], async (_req, res) => {
+  const info = {
+    uptime: process.uptime(),
+    memoryMB: Math.round(process.memoryUsage().rss / 1024 / 1024),
+    nodeVersion: process.version,
+    env: {
+      NODE_ENV: process.env.NODE_ENV,
+      RENDER: process.env.RENDER,
+      PORT: process.env.PORT,
+      hasGeminiKey: Boolean(process.env.GEMINI_API_KEY),
+    },
+    steps: {},
+  };
+
+  // Test 1: Simple Git
+  try {
+    const { default: simpleGit } = await import('simple-git');
+    const version = await simpleGit().version();
+    info.steps.git = { ok: true, version };
+  } catch (err) {
+    info.steps.git = { ok: false, error: err.message };
+  }
+
+  // Test 2: Tree-Sitter
+  try {
+    const { parseFile } = await import('./services/parser.service.js');
+    info.steps.treeSitter = { ok: true };
+  } catch (err) {
+    info.steps.treeSitter = { ok: false, error: err.message };
+  }
+
+  // Test 3: Embedding service status
+  try {
+    const memBefore = Math.round(process.memoryUsage().rss / 1024 / 1024);
+    const { embedOne } = await import('./services/embedding.service.js');
+    const vec = await embedOne('test function() { return 1; }');
+    const memAfter = Math.round(process.memoryUsage().rss / 1024 / 1024);
+    info.steps.embedding = { ok: true, dims: vec.length, memBefore, memAfter };
+  } catch (err) {
+    info.steps.embedding = { ok: false, error: err.message };
+  }
+
+  res.json(info);
+});
+
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get(['/api/health', '/health'], (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
