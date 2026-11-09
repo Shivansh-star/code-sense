@@ -81,15 +81,15 @@ app.get(['/api/debug', '/debug'], async (_req, res) => {
     info.steps.treeSitter = { ok: false, error: err.message };
   }
 
-  // Test 3: Embedding service status
+  // Test 3: Gemini status
   try {
-    const memBefore = Math.round(process.memoryUsage().rss / 1024 / 1024);
-    const { embedOne } = await import('./services/embedding.service.js');
-    const vec = await embedOne('test function() { return 1; }');
-    const memAfter = Math.round(process.memoryUsage().rss / 1024 / 1024);
-    info.steps.embedding = { ok: true, dims: vec.length, memBefore, memAfter };
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'text-embedding-004' });
+    const res = await model.embedContent('function test() { return 1; }');
+    info.steps.geminiEmbedding = { ok: true, dims: res.embedding.values.length };
   } catch (err) {
-    info.steps.embedding = { ok: false, error: err.message };
+    info.steps.geminiEmbedding = { ok: false, error: err.message };
   }
 
   res.json(info);
