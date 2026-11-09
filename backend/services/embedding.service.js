@@ -1,5 +1,17 @@
 
 import { pipeline, env } from '@xenova/transformers';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+const GEMINI_EMBED_MODEL = 'gemini-embedding-001';
+let _geminiModel = null;
+
+function getGeminiModel() {
+  if (!_geminiModel && process.env.GEMINI_API_KEY) {
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    _geminiModel = genAI.getGenerativeModel({ model: GEMINI_EMBED_MODEL });
+  }
+  return _geminiModel;
+}
 
 // Allow the transformers library to cache models locally.
 env.allowLocalModels = true;
@@ -30,16 +42,42 @@ async function getPipeline() {
 
 /**
  * Embed one or more texts.
+ * Uses Gemini gemini-embedding-001 by default (0 MB RAM, fast cloud API),
+ * with seamless fallback to local Xenova transformers.
  *
  * @param {string | string[]} texts  A single string or array of strings.
  * @returns {Promise<number[][]>}    Array of embedding vectors (plain JS arrays).
  */
 export async function embed(texts) {
-  const extractor = await getPipeline();
   const inputs = Array.isArray(texts) ? texts : [texts];
+
+  // 1. Try Gemini Cloud Embedding (Zero RAM, ideal for cloud hosting like Render)
+  const gemini = getGeminiModel();
+  if (gemini) {
+    try {
+      const results = [];
+      const PARALLEL_BATCH = 5;
+      for (let i = 0; i < inputs.length; i += PARALLEL_BATCH) {
+        const batch = inputs.slice(i, i + PARALLEL_BATCH);
+        const batchRes = await Promise.all(
+          batch.map(async (text) => {
+            const cleanText = text.slice(0, 2048);
+            const res = await gemini.embedContent(cleanText);
+            return res.embedding.values;
+          })
+        );
+        results.push(...batchRes);
+      }
+      return results;
+    } catch (err) {
+      console.warn('[embedding] Gemini cloud embedding failed, falling back to local:', err.message);
+    }
+  }
+
+  // 2. Fallback to local ONNX transformer
+  const extractor = await getPipeline();
   const allVectors = [];
 
-  // Process in batches to avoid memory spikes
   for (let i = 0; i < inputs.length; i += BATCH_SIZE) {
     const batch = inputs.slice(i, i + BATCH_SIZE);
 
@@ -48,8 +86,6 @@ export async function embed(texts) {
       normalize: true,
     });
 
-    // output is a Tensor of shape [batchSize, hiddenSize] when pooling='mean'
-    // Flatten to individual arrays
     const [batchSize, hiddenSize] = output.dims;
     for (let b = 0; b < batchSize; b++) {
       const vec = Array.from(output.data.slice(b * hiddenSize, (b + 1) * hiddenSize));
