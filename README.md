@@ -1,23 +1,39 @@
 # CodeSense ⚡ Intelligent Codebase Onboarding Agent
 
-> A full-stack, context-aware AI assistant that ingests public GitHub repositories, parses code structurally using Abstract Syntax Trees (AST), and allows developers to explore and ask natural language questions with exact code citations.
+A full-stack, context-aware AI assistant that ingests public GitHub repositories, parses code structurally using **Abstract Syntax Trees (AST)**, and enables developers to explore and ask natural-language questions about codebases with exact code citations.
 
 ---
 
 ## 🌟 Key Features
 
-- 🌳 **AST Semantic Chunking (Tree-sitter):** Never slices code mid-statement. Extracts complete, syntactically intact `function`, `class`, and `arrow_function` blocks with exact start/end line numbers. Supports **JavaScript**, **TypeScript**, **TSX**, and **Python**.
-- 🧠 **100% Free & Local Embeddings:** Uses `@xenova/transformers` running `Xenova/all-MiniLM-L6-v2` inside Node.js via ONNX Runtime. Generates 384-dimensional dense vectors locally on your CPU with **zero API cost** and **complete code privacy**.
-- 🗄️ **Local Vector Database (ChromaDB):** Stores chunks and vectors with **HNSW graph indexing** and **cosine similarity search** for sub-5ms retrieval.
-- 🤖 **Grounded RAG (Gemini 3.5 Flash):** Generates concise explanations grounded strictly in the retrieved code chunks, citing precise file paths and line numbers.
-- 🖥️ **Split-Screen Developer UI:**
-  - **Left Panel:** Conversational chat interface with markdown formatting and collapsible cited-snippet badges.
-  - **Right Panel:** Embedded **Monaco Editor** (the engine behind VS Code) displaying the exact cited code block with auto-detected syntax highlighting.
-  - **Draggable Resizer:** Adjustable split-pane width.
+- 🌳 **AST Semantic Chunking (Tree-sitter)**
+  - Extracts complete, syntactically intact functions, classes, and arrow functions without chopping code mid-statement.
+  - Preserves exact start and end line numbers.
+  - Supports **JavaScript**, **TypeScript**, **TSX**, and **Python**.
+
+- 🧠 **100% Free & Local Embeddings**
+  - Powered by `@xenova/transformers` running `Xenova/all-MiniLM-L6-v2` locally through ONNX Runtime.
+  - Generates 384-dimensional dense vectors directly on your CPU.
+  - **Zero embedding API cost** and **complete source code privacy**.
+
+- 🗄️ **Local Vector Database (ChromaDB)**
+  - Stores code chunks and their embeddings with HNSW graph indexing.
+  - Performs cosine similarity-based semantic search for sub-5ms retrieval.
+
+- 🤖 **Grounded RAG (Google Gemini)**
+  - Generates concise explanations grounded strictly in the retrieved code chunks.
+  - Provides precise file paths and line-number citations.
+
+- 🖥️ **Split-Screen Developer Interface**
+  - **Left Panel:** Conversational AI chat with Markdown support and collapsible code citations.
+  - **Right Panel:** Embedded Microsoft **Monaco Editor** (the engine behind VS Code) with auto-detected syntax highlighting.
+  - **Draggable Resizer:** Allows developers to adjust panel widths dynamically.
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ System Architecture
+
+CodeSense follows a Retrieval-Augmented Generation (RAG) architecture with local embeddings and a vector database.
 
 ```mermaid
 flowchart LR
@@ -170,56 +186,81 @@ gen_ai_proj/
 
 ## 🔌 API Reference
 
-### `POST /api/ingest`
-Ingests a GitHub repository, parses files into AST chunks, and stores local embeddings.
-- **Request:**
-  ```json
-  { "repoUrl": "https://github.com/owner/repository" }
-  ```
-- **Response:**
-  ```json
-  {
-    "message": "Repository ingested successfully.",
-    "repoUrl": "https://github.com/owner/repository",
-    "filesProcessed": 13,
-    "chunksIndexed": 12
-  }
-  ```
+### 1. Ingest Repository
 
-### `POST /api/chat`
-Answers a natural language question about the ingested codebase.
-- **Request:**
-  ```json
-  { "question": "Where is the authentication middleware located?" }
-  ```
-- **Response:**
-  ```json
-  {
-    "llm_response": "The authentication middleware is defined in `src/middleware/auth.js`...",
-    "cited_code_snippets": [
-      {
-        "id": "src/middleware/auth.js::verifyToken::12",
-        "code": "function verifyToken(req, res, next) { ... }",
-        "filePath": "src/middleware/auth.js",
-        "functionName": "verifyToken",
-        "nodeType": "function_declaration",
-        "startLine": 12,
-        "endLine": 28,
-        "relevanceScore": 0.9142
-      }
-    ]
-  }
-  ```
+**Endpoint:** `POST /api/ingest`
+
+Ingests a GitHub repository, parses source files into AST-based chunks, generates local embeddings, and stores them in ChromaDB.
+
+**Request Body**
+```json
+{
+  "repoUrl": "https://github.com/owner/repository"
+}
+```
+
+**Response**
+```json
+{
+  "message": "Repository ingested successfully.",
+  "repoUrl": "https://github.com/owner/repository",
+  "filesProcessed": 13,
+  "chunksIndexed": 12
+}
+```
+
+### 2. Chat with Codebase
+
+**Endpoint:** `POST /api/chat`
+
+Answers natural-language questions about the ingested repository using retrieved code chunks.
+
+**Request Body**
+```json
+{
+  "question": "Where is the authentication middleware located?"
+}
+```
+
+**Response**
+```json
+{
+  "llm_response": "The authentication middleware is defined in src/middleware/auth.js...",
+  "cited_code_snippets": [
+    {
+      "id": "src/middleware/auth.js::verifyToken::12",
+      "code": "function verifyToken(req, res, next) { ... }",
+      "filePath": "src/middleware/auth.js",
+      "functionName": "verifyToken",
+      "nodeType": "function_declaration",
+      "startLine": 12,
+      "endLine": 28,
+      "relevanceScore": 0.9142
+    }
+  ]
+}
+```
 
 ---
 
 ## 🔒 Privacy & Cost Efficiency
 
-- **Zero Embedding Cost:** Embeddings are generated locally using `@xenova/transformers` ONNX models inside Node.js.
-- **Code Privacy:** Cloned repository files are parsed and **immediately deleted from disk** after vectorization. Only mathematical vector representations and metadata are persisted in ChromaDB.
-- **Free-Tier LLM:** Uses Google Gemini's generous free-tier quota for answer synthesis.
+- **Zero Embedding API Cost:** Embeddings are generated locally using `@xenova/transformers` and ONNX Runtime.
+- **Code Privacy:** Repository files are parsed and deleted from disk after vectorization, according to the implemented ingestion workflow.
+- **Local Vector Storage:** Embeddings and metadata are stored in a locally running ChromaDB instance.
+- **Free-Tier LLM:** Uses Google Gemini's free-tier API quota for answer generation.
+
+---
+
+## 🎯 Use Cases
+
+- Understanding unfamiliar GitHub repositories quickly.
+- Exploring large codebases without manually reading every file.
+- Finding specific functions, classes, and implementations with line citations.
+- Onboarding new developers to existing projects.
 
 ---
 
 ## 📄 License
-This project is open-source and available under the [MIT License](LICENSE).
+
+This project is open-source and available under the **MIT License**.
