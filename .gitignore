@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+tmp/
+models/
+chroma_data/
+*.log

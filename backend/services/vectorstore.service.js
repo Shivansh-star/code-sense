@@ -18,16 +18,18 @@
 import { ChromaClient } from 'chromadb';
 
 const COLLECTION_NAME = 'codesense_repo';
-const CHROMA_HOST = process.env.CHROMA_HOST || 'http://localhost:8000';
+const CHROMA_HOST = process.env.CHROMA_HOST;
 
 let _client = null;
 let _collection = null;
-let _useMemoryStore = false;
-let _memoryStore = new Map(); // In-memory fallback if ChromaDB is offline (e.g. on Render)
+// Use memory store directly if on cloud platforms like Render or if CHROMA_HOST isn't set
+let _useMemoryStore = !process.env.CHROMA_HOST || Boolean(process.env.RENDER);
+let _memoryStore = new Map(); // In-memory store (fast cosine similarity, zero external deps)
 
 function getClient() {
+  if (_useMemoryStore) return null;
   if (!_client) {
-    _client = new ChromaClient({ path: CHROMA_HOST });
+    _client = new ChromaClient({ path: CHROMA_HOST || 'http://localhost:8000' });
   }
   return _client;
 }

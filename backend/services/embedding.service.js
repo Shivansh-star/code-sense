@@ -6,23 +6,22 @@ env.allowLocalModels = true;
 env.cacheDir = './models';  // Relative to the backend root
 
 const MODEL_NAME = 'Xenova/all-MiniLM-L6-v2';
-const BATCH_SIZE = 32;     
+const BATCH_SIZE = 16;     
 let _pipeline = null;       
 
 /**
  * Lazily initialise the feature-extraction pipeline.
  * Prints a friendly message the first time so users know the model
- * is downloading (can be ~90 MB on first run).
+ * is downloading (can be ~23 MB on first run with quantization).
  */
 async function getPipeline() {
   if (_pipeline) return _pipeline;
 
   console.log(`[embedding] Loading model "${MODEL_NAME}" …`);
-  console.log('[embedding] ⏳  First run may download ~90 MB – please wait …');
+  console.log('[embedding] ⏳  First run may download ~23 MB – please wait …');
 
   _pipeline = await pipeline('feature-extraction', MODEL_NAME, {
-    // Use float32 for better precision; set to 'int8' to trade accuracy for speed
-    quantized: false,
+    quantized: true,
   });
 
   console.log('[embedding] ✅  Model ready.');

@@ -21,6 +21,14 @@ if (!fs.existsSync(cloneDir)) {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// ─── Process crash protection ────────────────────────────────────────────────
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
+
 // ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(cors({
   origin: '*', // Allow all origins (Vercel, localhost, etc.)
