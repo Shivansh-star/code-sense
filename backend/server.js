@@ -22,7 +22,11 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
-app.use(cors({ origin: 'http://localhost:5173' }));  // Vite dev server
+app.use(cors({
+  origin: '*', // Allow all origins (Vercel, localhost, etc.)
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(express.json());
 
 // ─── Request logger ───────────────────────────────────────────────────────────
@@ -31,12 +35,14 @@ app.use((req, _res, next) => {
   next();
 });
 
-// ─── Routes ───────────────────────────────────────────────────────────────────
+// ─── Routes (supports both /api/* and /* paths) ────────────────────────────────
 app.use('/api/ingest', ingestRouter);
 app.use('/api/chat', chatRouter);
+app.use('/ingest', ingestRouter);
+app.use('/chat', chatRouter);
 
 // ─── Health check ─────────────────────────────────────────────────────────────
-app.get('/api/health', (_req, res) => {
+app.get(['/api/health', '/health'], (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
