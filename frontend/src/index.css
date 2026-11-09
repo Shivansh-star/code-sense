@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base ───────────────────────────────────────────────────────────────────── */
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-surface-0 text-gray-200 font-sans antialiased;
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-surface-3 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500;
+}
+
+/* ── Markdown Prose ─────────────────────────────────────────────────────────── */
+.prose-codesense {
+  @apply text-gray-300 text-sm leading-relaxed;
+}
+
+.prose-codesense h1,
+.prose-codesense h2,
+.prose-codesense h3 {
+  @apply text-gray-100 font-semibold mt-4 mb-2;
+}
+
+.prose-codesense h1 { @apply text-xl; }
+.prose-codesense h2 { @apply text-lg; }
+.prose-codesense h3 { @apply text-base; }
+
+.prose-codesense p {
+  @apply mb-3;
+}
+
+.prose-codesense code {
+  @apply bg-surface-2 text-accent px-1.5 py-0.5 rounded text-xs font-mono;
+}
+
+.prose-codesense pre {
+  @apply bg-surface-2 rounded-lg p-4 my-3 overflow-x-auto;
+}
+
+.prose-codesense pre code {
+  @apply bg-transparent text-gray-300 p-0;
+}
+
+.prose-codesense ul, .prose-codesense ol {
+  @apply pl-5 mb-3 space-y-1;
+}
+
+.prose-codesense li {
+  @apply text-gray-300;
+}
+
+.prose-codesense blockquote {
+  @apply border-l-4 border-accent pl-4 italic text-gray-400 my-3;
+}
+
+.prose-codesense a {
+  @apply text-accent hover:text-accent-hover underline;
+}
+
+.prose-codesense hr {
+  @apply border-surface-3 my-4;
+}
+
+/* ── Animations ─────────────────────────────────────────────────────────────── */
+@keyframes pulse-dot {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40%            { opacity: 1;   transform: scale(1); }
+}
+
+.typing-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  @apply bg-accent;
+  animation: pulse-dot 1.2s infinite ease-in-out;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes slide-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-in {
+  animation: slide-in-up 0.25s ease-out forwards;
+}
+
+/* ── Resizer ────────────────────────────────────────────────────────────────── */
+.panel-resizer {
+  @apply w-1 bg-surface-2 hover:bg-accent cursor-col-resize transition-colors duration-150;
+  flex-shrink: 0;
+}
